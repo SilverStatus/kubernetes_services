@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: hpa
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
   name: apache-hpa
 spec:
