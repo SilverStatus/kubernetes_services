@@ -11,7 +11,7 @@ data:
   NODE_ENV: "production"
   GENERIC_TIMEZONE: "Asia/Jakarta"
   N8N_SECURE_COOKIE: "false" 
-  #WEBHOOK_TUNNEL_URL: "http://n8n.local/" 
+  WEBHOOK_URL: "http://n8n.local/" 
   # Database configurations
   DB_TYPE: "postgresdb"
   DB_POSTGRESDB_USER: "n8n"
