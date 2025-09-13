@@ -1,0 +1,71 @@
+{{- if hasKey .Values "ingress" }}
+{{- if and (hasKey .Values.ingress "enabled") .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "generic-kube-config.fullname" . }}
+  labels:
+    {{- include "generic-kube-config.labels" . | nindent 4 }}
+  {{- if hasKey .Values.ingress "annotations" }}
+  {{- if .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+  {{- end }}
+  {{- end }}
+spec:
+  {{- if hasKey .Values.ingress "className" }}
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- end }}
+  {{- if hasKey .Values.ingress "tls" }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - {{- if hasKey . "hosts" }}
+      {{- if .hosts }}
+      hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- if hasKey . "secretName" }}
+      secretName: {{ .secretName }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- if hasKey .Values.ingress "hosts" }}
+  {{- if .Values.ingress.hosts }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - {{- if hasKey . "host" }}
+      host: {{ .host | quote }}
+      {{- end }}
+      http:
+        paths:
+          {{- if hasKey . "paths" }}
+          {{- range .paths }}
+          - {{- if hasKey . "path" }}
+            path: {{ .path }}
+            {{- end }}
+            {{- if hasKey . "pathType" }}
+            {{- if .pathType }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ include "generic-kube-config.fullname" $ }}
+                {{- if and (hasKey $.Values "service") (hasKey $.Values.service "port") }}
+                port:
+                  number: {{ $.Values.service.port }}
+                {{- end }}
+          {{- end }}
+          {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

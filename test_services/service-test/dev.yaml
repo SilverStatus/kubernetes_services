@@ -1,0 +1,76 @@
+name: service-test
+namespace: ingress-nginx
+
+image:
+  repository: hashicorp/http-echo
+  pullPolicy: Always
+  tag: latest
+
+strategy:
+ type: RollingUpdate
+ maxSurge: 25%
+ maxUnavailable: 25%
+
+imagePullSecrets: ""
+nameOverride: ""
+fullnameOverride: ""
+
+labels:
+  app: "service-test"
+  name: "service-test"
+  role: "http"
+
+args:
+  - "-text=hello from demo"
+
+annotations: {}
+
+podAnnotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5678
+  protocol: TCP
+  name: service-test
+
+ports:
+  - containerPort: 5678
+    name: http
+    protocol: TCP
+
+  
+ingress:
+  enabled: false
+  annotations: {}
+
+resources:
+  limits:
+    cpu: 10m
+    ephemeral-storage: 1Mi
+    memory: 1Mi
+  requests:
+    cpu: 1m
+    ephemeral-storage: 0.1Mi
+    memory: 0.5Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+
+
+
+

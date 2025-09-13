@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: {{ .Values.service.protocol }}
+      name: {{ .Values.service.name }}
+  selector:
+    app: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}

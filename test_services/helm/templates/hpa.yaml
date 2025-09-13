@@ -1,0 +1,27 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.name }}-hpa
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- range $key, $value := .Values.autoscaling.annotations }}
+    {{ $key }}: "{{ $value }}"
+    {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.name }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    {{- range .Values.autoscaling.metrics }}
+    - type: Resource
+      resource:
+        name: {{ .resource.name }}
+        target:
+          type: {{ .resource.target.type }}
+          averageUtilization: {{ .resource.target.averageUtilization }}
+    {{- end }}
+{{- end }}

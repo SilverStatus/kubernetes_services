@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}
+  strategy:
+    rollingUpdate:
+      maxSurge: {{ .Values.strategy.maxSurge }}
+      maxUnavailable: {{ .Values.strategy.maxUnavailable }}
+    type: {{ .Values.strategy.type }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}
+        service: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}
+    spec:
+      serviceAccountName: {{ if .Values.serviceAccount }}{{ .Values.serviceAccount }}{{ else }}{{ .Values.serviceAccountName }}{{ end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+          # Container configuration
+        - name: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          # Add support for args
+          {{- if .Values.args }}
+          args:
+            {{- toYaml .Values.args | nindent 12 }}
+          {{- end }}
+
+          # Ports configuration
+          {{- with .Values.ports }}
+          ports:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+          # Resources configuration
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+          # Environment Reference configuration
+           {{- if .Values.envFrom }}
+          envFrom:
+            {{- if and (kindIs "map" .Values.envFrom) .Values.envFrom.secret }}
+            {{- range .Values.envFrom.secret }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+            {{- if .Values.envFrom.configmap }}
+            - configMapRef:
+                name: {{ .Values.envFrom.configmap }}
+            {{- end }}
+            {{- else }}
+            {{- toYaml .Values.envFrom | nindent 12 }}
+            {{- end }}
+          {{- end }}
+ 
+          # Environment Variable configuration
+          {{- if .Values.env }}
+          env:
+          {{- if kindIs "slice" .Values.env }}
+          {{- range .Values.env }}
+          - name: {{ .name }}
+            {{- if .value }}
+            value: {{ .value | quote }}
+            {{- else if .valueFrom }}
+            valueFrom:
+              {{- toYaml .valueFrom | nindent 14 }}
+            {{- end }}
+          {{- end }}
+          {{- else }}
+          {{- range .Values.env }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+ 
+          # Volume Mounts configuration
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+          # Liveness, Readiness, Startup Probes configuration
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+ 
+      # topologySpreadConstraints configuration
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app: {{ include "prefixSprint" . }}{{ include "prefixSquad" . }}{{ .Values.labels.app }}
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+ 
+      # Tolerations configuration
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+ 
+      # Volumes configuration
+      {{- if or .Values.volumes .Values.secretProviderClass .Values.configMap }}
+      volumes:
+        {{- if .Values.volumes }}
+        {{- if kindIs "slice" .Values.volumes }}
+        {{- toYaml .Values.volumes | nindent 8 }}
+        {{- else }}
+        {{- range .Values.volumes }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ .persistentVolumeClaim.claimName }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+ 
+        {{- with .Values.secretProviderClass }}
+        {{- range . }}
+        - name: {{ .name }}
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .spcName }}
+        {{- end }}
+        {{- end }}
+ 
+        {{- with .Values.multiSourceConfig }}
+        {{- range . }}
+        - name: {{ .volumeName }}
+          projected:
+            defaultMode: {{ .defaultMode | default 420 }}
+            sources:
+            {{- range .configMapLists }}
+            - configMap:
+                name: {{ . }}
+            {{- end }}
+        {{- end }}
+        {{- end }}
+ 
+        {{- with .Values.configMap }}
+        {{- range . }}
+        - name: {{ .volumeName }}
+          configMap:
+            defaultMode: {{ .defaultMode | default 420 }}
+            name: {{ .name }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
