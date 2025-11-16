@@ -1,0 +1,96 @@
+# this is manifest kong control plane (cp) with DB
+# before apply manifest make sure to create this items:
+# 1. postgres database with name kong-db
+# 2. tls secret with name kong-cluster-cert
+# 3. create ns kong for kong deployment
+
+# here is how to create secret tls:
+# openssl req -newkey rsa:2048 -days 365 -nodes -x509 \
+#   -subj "/CN=kong-cluster" \
+#   -keyout cluster.key -out cluster.crt
+
+# kubectl create namespace kong
+# kubectl create secret tls kong-cluster-cert \
+#   --cert=cluster.crt \
+#   --key=cluster.key \
+#   -n kong
+
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-cp
+  namespace: kong
+spec:
+  ports:
+    - port: 8001
+      name: admin
+    - port: 8444
+      name: admin-ssl
+    - port: 8002
+      name: proxy-metrics
+  selector:
+    app: kong-cp
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-cp
+  namespace: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong-cp
+  template:
+    metadata:
+      labels:
+        app: kong-cp
+    spec:
+      containers:
+        - name: kong
+          image: kong:3.6
+          env:
+            - name: KONG_DATABASE
+              value: "postgres"
+            - name: KONG_PG_HOST
+              value: "postgres.kong-db.svc.cluster.local"
+            - name: KONG_PG_USER
+              value: "kong"
+            - name: KONG_PG_PASSWORD
+              value: "kongpassword"
+            - name: KONG_PG_DATABASE
+              value: "kong"
+            - name: KONG_ROLE
+              value: "control_plane"
+            #- name: KONG_NGINX_ADMIN_LISTEN
+            #  value: "8001 8444 ssl"
+            - name: KONG_LOG_LEVEL
+              value: "info"
+            - name: KONG_PROXY_ACCESS_LOG
+              value: "/dev/stdout"
+            - name: KONG_PROXY_ERROR_LOG
+              value: "/dev/stderr"
+            - name: KONG_CLUSTER_CERT
+              value: "/kong-cluster/tls.crt"
+            - name: KONG_CLUSTER_CERT_KEY
+              value: "/kong-cluster/tls.key"
+          ports:
+            - containerPort: 8001
+            - containerPort: 8444
+            - containerPort: 8002
+          volumeMounts:
+            - name: kong-cluster-cert
+              mountPath: /kong-cluster
+              readOnly: true
+      volumes:
+        - name: kong-cluster-cert
+          secret:
+            secretName: kong-cluster-cert 
