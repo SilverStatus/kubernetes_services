@@ -4,14 +4,20 @@ metadata:
   name: kong-dp
   namespace: kong
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
     - name: proxy
       port: 8000
       targetPort: 8000
+      nodePort: 30800  # ALB will target this port on EC2 nodes
     - name: proxy-ssl
       port: 8443
       targetPort: 8443
+      nodePort: 30843
+    - name: status
+      port: 8100
+      targetPort: 8100
+      nodePort: 30810  # For health checks
   selector:
     app: kong-dp
 
@@ -35,6 +41,12 @@ spec:
         - name: kong
           image: kong:3.6
           env:
+            - name: KONG_LOG_LEVEL
+              value: "error"
+            - name: KONG_STATUS_LISTEN
+              value: 0.0.0.0:8100
+            - name: KONG_DNS_RESOLVER
+              value: 10.43.0.10:53 # dns server ip inside k8s cluster
             - name: KONG_DATABASE
               value: "off"
             - name: KONG_ROLE
@@ -52,6 +64,7 @@ spec:
           ports:
             - containerPort: 8000
             - containerPort: 8443
+            - containerPort: 8100
           volumeMounts:
             - name: kong-cluster-cert
               mountPath: /kong-cluster

@@ -1,12 +1,13 @@
 # this is manifest kong control plane (cp) with DB
 # before apply manifest make sure to create this items:
 # 1. postgres database with name kong-db
-# 2. tls secret with name kong-cluster-cert
+# 2. generatetls secret with name kong-cluster-cert
+# Install kong cli and generate cert:
+# kong hybrid gen_cert cluster.crt cluster.key
 # 3. create ns kong for kong deployment
 # 4. after apply kong dp make sure to run kong migration process
 # kubectl run kong-migrations -n kong-db --rm -it --restart=Never --image=kong:3.6 --env KONG_PG_HOST=postgres.kong-db.svc.cluster.local --env KONG_PG_USER=kong --env KONG_PG_PASSWORD=kongpassword --env KONG_PG_DATABASE=kong -- kong migrations bootstrap
 # kubectl run kong-migrations -n kong-db --rm -it --restart=Never --image=kong:3.6 --env KONG_PG_HOST=postgres.kong-db.svc.cluster.local --env KONG_PG_USER=kong --env KONG_PG_PASSWORD=kongpassword --env KONG_PG_DATABASE=kong -- kong migrations bootstrap
-
 
 # here is how to create secret tls:
 # openssl req -newkey rsa:2048 -days 365 -nodes -x509 \
@@ -62,6 +63,10 @@ spec:
         - name: kong
           image: kong:3.6
           env:
+            - name: KONG_CLUSTER_CONTROL_PLANE
+              value: kong-cp.kong.svc.cluster.local:8005
+            - name: KONG_CLUSTER_LISTEN
+              value: "0.0.0.0:8005 ssl"
             - name: KONG_DATABASE
               value: "postgres"
             - name: KONG_PG_HOST
@@ -74,10 +79,8 @@ spec:
               value: "kong"
             - name: KONG_ROLE
               value: "control_plane"
-            #- name: KONG_NGINX_ADMIN_LISTEN
-            #  value: "8001 8444 ssl"
             - name: KONG_LOG_LEVEL
-              value: "debug"
+              value: "error"
             - name: KONG_PROXY_ACCESS_LOG
               value: "/dev/stdout"
             - name: KONG_PROXY_ERROR_LOG
