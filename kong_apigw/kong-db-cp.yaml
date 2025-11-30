@@ -35,6 +35,8 @@ spec:
       name: admin-ssl
     - port: 8002
       name: proxy-metrics
+    - port: 8005
+      name: cluster
   selector:
     app: kong-cp
 
@@ -88,6 +90,7 @@ spec:
             - containerPort: 8001
             - containerPort: 8444
             - containerPort: 8002
+            - containerPort: 8005
           volumeMounts:
             - name: kong-cluster-cert
               mountPath: /kong-cluster
